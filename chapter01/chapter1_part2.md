@@ -1,4 +1,4 @@
-
+Good. Now let me write Part 2.
 
 ## 1.4 Generalisation as a Problem
 
@@ -162,4 +162,46 @@ This expression is the cross-entropy loss averaged over the training set. To see
 
 $$-\frac{1}{n} \sum_{i=1}^{n} \log p_{\boldsymbol{\theta}}(y_i \mid \mathbf{x}_i) = -\mathbb{E}_{(\mathbf{x}, y) \sim \hat{p}_n}\!\left[\log p_{\boldsymbol{\theta}}(y \mid \mathbf{x})\right] = H\!\left(\hat{p}_n,\, p_{\boldsymbol{\theta}}\right)$$
 
-The negative average log-likelihood is the cross-entropy between the empirical distribution and the model. Applying the decomposition $H(\hat{p}_n, p_{\boldsymbol{\theta}}) = H(\hat{p}_n) + D_{\text{KL}}(
+The negative average log-likelihood is the cross-entropy between the empirical distribution and the model. Applying the decomposition $H(\hat{p}_n, p_{\boldsymbol{\theta}}) = H(\hat{p}_n) + D_{\text{KL}}(\hat{p}_n \| p_{\boldsymbol{\theta}})$, and noting that $H(\hat{p}_n)$ is fixed with respect to $\boldsymbol{\theta}$:
+
+$$\hat{\boldsymbol{\theta}}_{\text{MLE}} = \arg\min_{\boldsymbol{\theta}}\, H\!\left(\hat{p}_n,\, p_{\boldsymbol{\theta}}\right) = \arg\min_{\boldsymbol{\theta}}\, D_{\text{KL}}\!\left(\hat{p}_n \| p_{\boldsymbol{\theta}}\right)$$
+
+The result is a three-way equivalence: maximising log-likelihood, minimising cross-entropy loss, and minimising KL divergence from the empirical data distribution to the model are identical optimisation problems. They correspond to three different conventions for expressing the same objective—statistical, information-theoretic, and variational, respectively. In subsequent chapters, all three framings appear and are treated as interchangeable.
+
+**Worked example: next-token prediction.**
+
+To ground these abstractions, consider a simplified language modelling scenario. Suppose the vocabulary contains exactly three tokens: $\mathcal{V} = \{\texttt{mat},\, \texttt{floor},\, \texttt{roof}\}$. For the context "The cat sat on the ___", suppose the true conditional distribution of the next token—derived from the statistics of a large text corpus—is:
+
+$$p(\texttt{mat}) = 0.70, \quad p(\texttt{floor}) = 0.20, \quad p(\texttt{roof}) = 0.10$$
+
+The entropy of this true distribution—the minimum achievable cross-entropy for any model on this context—is:
+
+$$H(p) = -\!\left(0.70 \log 0.70 + 0.20 \log 0.20 + 0.10 \log 0.10\right) = 0.250 + 0.322 + 0.230 = 0.802 \text{ nats}$$
+
+Now compare two models. **Model A** has learned the correct distribution: $p_{\boldsymbol{\theta}}^A = (0.70, 0.20, 0.10)$. Its cross-entropy is $H(p, p_{\boldsymbol{\theta}}^A) = H(p) = 0.802$ nats and $D_{\text{KL}}(p \| p_{\boldsymbol{\theta}}^A) = 0$.
+
+**Model B** predicts a near-uniform distribution: $p_{\boldsymbol{\theta}}^B = (0.33, 0.33, 0.34)$. Its cross-entropy is:
+
+$$H(p, p_{\boldsymbol{\theta}}^B) = -\!\left(0.70 \log 0.33 + 0.20 \log 0.33 + 0.10 \log 0.34\right) = 0.776 + 0.222 + 0.108 = 1.106 \text{ nats}$$
+
+The excess cost relative to Model A is $1.106 - 0.802 = 0.304$ nats. This equals $D_{\text{KL}}(p \| p_{\boldsymbol{\theta}}^B)$, confirming the decomposition. Each gradient step of MLE training updates $\boldsymbol{\theta}$ in the direction that reduces this excess—pulling $p_{\boldsymbol{\theta}}$ closer to $\hat{p}_n$ and, by extension, toward $p$.
+
+### Language Models as Entropy-Reduction Machines
+
+The information-theoretic framework makes precise a claim that is central to this course: a large language model is an entropy-reduction machine.
+
+Consider the distribution over the next token in a text corpus with vocabulary size $|\mathcal{V}|$. In the absence of any context, the entropy of this distribution is bounded above by $\log |\mathcal{V}|$: for a vocabulary of 50,000 tokens, $\log_2(50{,}000) \approx 15.6$ bits per token. In practice, unigram frequencies are highly skewed—the most common tokens are orders of magnitude more probable than the rarest—so the unigram entropy is substantially lower, but still high.
+
+Now provide the context "The cat sat on the". The *conditional entropy* $H(X_t \mid X_1, \ldots, X_{t-1})$ drops sharply: given these five tokens, very few continuations are plausible. The vast majority of vocabulary items have near-zero conditional probability. The context has eliminated most of the uncertainty about $X_t$. A language model is a system that implements this context-conditional reduction in uncertainty: its learned parameters encode the regularities of language that allow each preceding token to constrain the probability mass over possible successors.
+
+The connection to the training objective is exact. Minimising the cross-entropy loss $-\frac{1}{n}\sum_{i,t} \log p_{\boldsymbol{\theta}}(x_t^{(i)} \mid x_{<t}^{(i)})$ is equivalent to training the model to assign high probability to the tokens that actually occur and low probability to those that do not—to predict as much as possible of the uncertainty that genuine context removes. A model with perfect knowledge of the true conditional distributions would achieve cross-entropy equal to the true conditional entropy, averaged across all contexts. Any deviation above this floor represents residual model error: uncertainty the model cannot account for.
+
+In practice, the average per-token cross-entropy of a language model is commonly reported as *perplexity*:
+
+$$\text{PPL} = \exp\!\left(\,\mathbb{E}\!\left[-\log p_{\boldsymbol{\theta}}(x_t \mid x_{<t})\right]\right)$$
+
+Perplexity is the geometric mean of the inverse probabilities assigned by the model to the true next tokens. A perplexity of $k$ corresponds to the model being, on average, as uncertain as if it were choosing uniformly among $k$ equally probable alternatives. As training proceeds and the model learns more of the statistical structure of language, perplexity decreases. Chapter 7 will show that this decrease follows a power law with model size, training data volume, and compute budget—a quantitative version of the claim that scale enables entropy reduction.
+
+This framing—prediction as entropy reduction, training as KL divergence minimisation, generalisation as the reduction of uncertainty on unseen text—connects the abstract formalism of Section 1.3 to the empirical practice of Chapter 7 and to the conceptual spine of the course. The systems this course studies are, at their mathematical foundation, large parametric models trained to compress the regularities of human-generated data. Whether that compression produces something that warrants the name *understanding*, and under what conditions it might, is the question to which this course will return in its final chapter.
+
+<!-- END PART 2 -->

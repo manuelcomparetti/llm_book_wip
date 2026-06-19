@@ -1,5 +1,3 @@
-Good. Now let me write Part 2.
-
 ## 1.4 Generalisation as a Problem
 
 ERM, established in Section 1.3, selects the hypothesis that minimises average loss on the training data:
@@ -198,7 +196,13 @@ The connection to the training objective is exact. Minimising the cross-entropy 
 
 In practice, the average per-token cross-entropy of a language model is commonly reported as *perplexity*:
 
-$$\text{PPL} = \exp\!\left(\,\mathbb{E}\!\left[-\log p_{\boldsymbol{\theta}}(x_t \mid x_{<t})\right]\right)$$
+$$
+\mathrm{PPL} = \exp\left(
+\mathbb{E}\left[
+-\log p_{\theta}(x_t \mid x_{< t})
+\right]
+\right)
+$$
 
 Perplexity is the geometric mean of the inverse probabilities assigned by the model to the true next tokens. A perplexity of $k$ corresponds to the model being, on average, as uncertain as if it were choosing uniformly among $k$ equally probable alternatives. As training proceeds and the model learns more of the statistical structure of language, perplexity decreases. Chapter 7 will show that this decrease follows a power law with model size, training data volume, and compute budget—a quantitative version of the claim that scale enables entropy reduction.
 
